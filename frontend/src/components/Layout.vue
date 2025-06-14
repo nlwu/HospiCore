@@ -358,6 +358,10 @@ const menuRoutes = computed(() => {
         {
           path: '/system/roles',
           meta: { title: '角色管理', icon: 'UserFilled' }
+        },
+        {
+          path: '/system/departments',
+          meta: { title: '部门管理', icon: 'OfficeBuilding' }
         }
       ]
     },
