@@ -440,7 +440,6 @@ onMounted(() => {
 .node-actions {
   display: flex;
   gap: 8px;
-  opacity: 0;
   transition: opacity 0.3s;
 }
 
