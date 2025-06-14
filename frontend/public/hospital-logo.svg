@@ -1,0 +1,11 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- 医院十字标志背景 -->
+  <circle cx="32" cy="32" r="30" fill="#409eff" stroke="#1890ff" stroke-width="2"/>
+  
+  <!-- 医疗十字符号 -->
+  <rect x="28" y="16" width="8" height="32" fill="white" rx="2"/>
+  <rect x="16" y="28" width="32" height="8" fill="white" rx="2"/>
+  
+  <!-- 小装饰点 -->
+  <circle cx="32" cy="32" r="2" fill="#1890ff"/>
+</svg> 

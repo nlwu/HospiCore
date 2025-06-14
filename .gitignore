@@ -1,0 +1,40 @@
+# 前端相关
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# 编译输出
+dist/
+tmp/
+out-tsc/
+
+# 日志文件
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 临时文件
+.DS_Store
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.temp/
+.tmp/
+temp/
+tmp/
+
+
+
+# 前端构建目录
+doces/frontend/dist/
+doces/frontend/node_modules/
+
+
+# 后端缓存
+doces/backend/node_modules/
+doces/backend/dist/

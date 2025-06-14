@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR API 测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-section {
+            margin-bottom: 30px;
+        }
+        .test-section h2 {
+            color: #409EFF;
+            border-bottom: 2px solid #409EFF;
+            padding-bottom: 10px;
+        }
+        button {
+            background: #409EFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        .error {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+        .loading {
+            color: #6c757d;
+            font-style: italic;
+        }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #dc3545;
+        }
+        .status-dot.online {
+            background: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HR管理系统 API 测试</h1>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-dot" id="backendStatus"></div>
+                <span>后端服务</span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot" id="dbStatus"></div>
+                <span>数据库连接</span>
+            </div>
+            <div class="status-item">
+                <span id="currentTime"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="test-section">
+            <h2>员工管理 API 测试</h2>
+            <button onclick="testEmployeesList()">获取员工列表</button>
+            <button onclick="testEmployeeStats()">获取员工统计</button>
+            <button onclick="testCreateEmployee()">创建测试员工</button>
+            <div id="employeeResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="test-section">
+            <h2>考勤管理 API 测试</h2>
+            <button onclick="testAttendanceRecords()">获取考勤记录</button>
+            <button onclick="testPunchIn()">测试打卡</button>
+            <button onclick="testSchedules()">获取排班信息</button>
+            <div id="attendanceResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="test-section">
+            <h2>招聘管理 API 测试</h2>
+            <button onclick="testJobPositions()">获取职位列表</button>
+            <button onclick="testApplications()">获取应聘记录</button>
+            <button onclick="testRecruitmentStats()">获取招聘统计</button>
+            <div id="recruitmentResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="test-section">
+            <h2>请假管理 API 测试</h2>
+            <button onclick="testLeaveRequests()">获取请假申请</button>
+            <button onclick="testLeaveBalance()">获取假期余额</button>
+            <button onclick="testCreateLeaveRequest()">创建请假申请</button>
+            <div id="leaveResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3001/api';
+        
+        // 更新时间
+        function updateTime() {
+            document.getElementById('currentTime').textContent = new Date().toLocaleString();
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // 检查服务状态
+        async function checkServiceStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (response.ok) {
+                    document.getElementById('backendStatus').classList.add('online');
+                    document.getElementById('dbStatus').classList.add('online');
+                }
+            } catch (error) {
+                console.error('服务状态检查失败:', error);
+            }
+        }
+        checkServiceStatus();
+
+        // 通用请求函数
+        async function makeRequest(url, options = {}, resultElementId) {
+            const resultElement = document.getElementById(resultElementId);
+            
+            try {
+                resultElement.textContent = '请求中...';
+                resultElement.className = 'result loading';
+                
+                const response = await fetch(`${API_BASE_URL}${url}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer test-token'
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultElement.textContent = `✅ 请求成功 (${response.status})\n\n${JSON.stringify(data, null, 2)}`;
+                    resultElement.className = 'result success';
+                } else {
+                    resultElement.textContent = `❌ 请求失败 (${response.status})\n\n${JSON.stringify(data, null, 2)}`;
+                    resultElement.className = 'result error';
+                }
+            } catch (error) {
+                resultElement.textContent = `❌ 网络错误\n\n${error.message}`;
+                resultElement.className = 'result error';
+            }
+        }
+
+        // 员工管理测试
+        function testEmployeesList() {
+            makeRequest('/hr/employees?page=1&limit=10', {}, 'employeeResult');
+        }
+
+        function testEmployeeStats() {
+            makeRequest('/hr/employees/stats', {}, 'employeeResult');
+        }
+
+        function testCreateEmployee() {
+            const testEmployee = {
+                employee_no: 'TEST' + Date.now(),
+                name: '测试员工',
+                gender: '男',
+                birth_date: '1990-01-01',
+                phone: '13800138000',
+                department: '测试部门',
+                position: '测试职位',
+                education: '本科',
+                hire_date: new Date().toISOString().split('T')[0],
+                address: '测试地址'
+            };
+            
+            makeRequest('/hr/employees', {
+                method: 'POST',
+                body: JSON.stringify(testEmployee)
+            }, 'employeeResult');
+        }
+
+        // 考勤管理测试
+        function testAttendanceRecords() {
+            makeRequest('/hr/attendance/records?page=1&limit=10', {}, 'attendanceResult');
+        }
+
+        function testPunchIn() {
+            const punchData = {
+                employee_id: 1,
+                punch_type: 'in',
+                punch_time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+                notes: 'API测试打卡'
+            };
+            
+            makeRequest('/hr/attendance/records/punch-in', {
+                method: 'POST',
+                body: JSON.stringify(punchData)
+            }, 'attendanceResult');
+        }
+
+        function testSchedules() {
+            makeRequest('/hr/attendance/schedules?page=1&limit=10', {}, 'attendanceResult');
+        }
+
+        // 招聘管理测试
+        function testJobPositions() {
+            makeRequest('/hr/recruitment/positions?page=1&limit=10', {}, 'recruitmentResult');
+        }
+
+        function testApplications() {
+            makeRequest('/hr/recruitment/applications?page=1&limit=10', {}, 'recruitmentResult');
+        }
+
+        function testRecruitmentStats() {
+            makeRequest('/hr/recruitment/stats', {}, 'recruitmentResult');
+        }
+
+        // 请假管理测试
+        function testLeaveRequests() {
+            makeRequest('/hr/leave/requests?page=1&limit=10', {}, 'leaveResult');
+        }
+
+        function testLeaveBalance() {
+            makeRequest('/hr/leave/balance/1', {}, 'leaveResult');
+        }
+
+        function testCreateLeaveRequest() {
+            const leaveData = {
+                employee_id: 1,
+                leave_type: '年假',
+                start_date: new Date().toISOString().split('T')[0],
+                end_date: new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0],
+                days: 1,
+                reason: 'API测试请假',
+                status: 'pending'
+            };
+            
+            makeRequest('/hr/leave/requests', {
+                method: 'POST',
+                body: JSON.stringify(leaveData)
+            }, 'leaveResult');
+        }
+
+        // 页面加载完成后自动测试基本连接
+        window.onload = function() {
+            console.log('HR API 测试页面加载完成');
+            setTimeout(() => {
+                testEmployeesList();
+            }, 1000);
+        };
+    </script>
+</body>
+</html> 
