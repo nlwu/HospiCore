@@ -10,7 +10,9 @@ const employeeSchema = Joi.object({
   gender: Joi.string().valid('男', '女').optional(),
   birth_date: Joi.date().optional(),
   id_card: Joi.string().max(18).optional(),
-  phone: Joi.string().max(20).optional(),
+  phone: Joi.string().pattern(/^1[3-9]\d{9}$/).optional().messages({
+    'string.pattern.base': '手机号格式不正确'
+  }),
   email: Joi.string().email().max(100).optional(),
   address: Joi.string().optional(),
   education: Joi.string().max(20).optional(),
@@ -18,10 +20,12 @@ const employeeSchema = Joi.object({
   department_id: Joi.number().integer().optional(),
   position: Joi.string().max(50).optional(),
   hire_date: Joi.date().optional(),
-  status: Joi.string().valid('active', 'inactive', 'resigned').optional(),
-  salary: Joi.number().precision(2).optional(),
+  status: Joi.string().valid('active', 'inactive', 'resigned').default('active'),
+  salary: Joi.number().precision(2).min(0).optional(),
   emergency_contact_name: Joi.string().max(50).optional(),
-  emergency_contact_phone: Joi.string().max(20).optional(),
+  emergency_contact_phone: Joi.string().pattern(/^1[3-9]\d{9}$/).optional().messages({
+    'string.pattern.base': '紧急联系人手机号格式不正确'
+  }),
   notes: Joi.string().optional()
 });
 
@@ -85,6 +89,29 @@ router.get('/', async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: '获取员工列表失败'
+    });
+  }
+});
+
+// 获取简化的员工列表（仅包含id和name）
+router.get('/simple', async (req, res) => {
+  try {
+    const employees = await db.query(`
+      SELECT id, name, employee_number, department_id
+      FROM employees
+      WHERE status = 'active'
+      ORDER BY name ASC
+    `);
+
+    res.json({
+      status: 'success',
+      data: employees
+    });
+  } catch (error) {
+    console.error('获取简化员工列表失败:', error);
+    res.status(500).json({
+      status: 'error',
+      message: '获取简化员工列表失败'
     });
   }
 });
@@ -285,6 +312,107 @@ router.delete('/', async (req, res) => {
   }
 });
 
+// 导出员工信息
+router.get('/export', async (req, res) => {
+  try {
+    const { name, employee_number, department_id, position, status } = req.query;
+    
+    let whereClause = '1=1';
+    let params = [];
+    
+    if (name) {
+      whereClause += ` AND e.name LIKE ?`;
+      params.push(`%${name}%`);
+    }
+    
+    if (employee_number) {
+      whereClause += ` AND e.employee_number LIKE ?`;
+      params.push(`%${employee_number}%`);
+    }
+    
+    if (department_id) {
+      whereClause += ` AND e.department_id = ?`;
+      params.push(department_id);
+    }
+    
+    if (position) {
+      whereClause += ` AND e.position LIKE ?`;
+      params.push(`%${position}%`);
+    }
+    
+    if (status) {
+      whereClause += ` AND e.status = ?`;
+      params.push(status);
+    }
+    
+    const dataQuery = `
+      SELECT 
+        e.employee_number as '工号',
+        e.name as '姓名',
+        e.gender as '性别',
+        d.name as '部门',
+        e.position as '职位',
+        e.phone as '手机号',
+        e.email as '邮箱',
+        e.education as '学历',
+        e.hire_date as '入职日期',
+        CASE e.status 
+          WHEN 'active' THEN '在职'
+          WHEN 'inactive' THEN '离职'
+          ELSE '其他'
+        END as '状态',
+        e.address as '地址'
+      FROM employees e
+      LEFT JOIN departments d ON e.department_id = d.id
+      WHERE ${whereClause}
+      ORDER BY e.created_at DESC
+    `;
+    
+    const employees = await db.query(dataQuery, params);
+    
+    // 生成CSV内容
+    if (employees.length === 0) {
+      return res.json({
+        status: 'success',
+        data: {
+          url: null,
+          message: '没有符合条件的员工数据'
+        }
+      });
+    }
+    
+    // 获取表头
+    const headers = Object.keys(employees[0]);
+    let csvContent = headers.join(',') + '\n';
+    
+    // 添加数据行
+    employees.forEach(employee => {
+      const row = headers.map(header => {
+        const value = employee[header] || '';
+        // 处理包含逗号或换行的字段
+        return `"${String(value).replace(/"/g, '""')}"`;
+      });
+      csvContent += row.join(',') + '\n';
+    });
+    
+    // 设置响应头
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="employees.csv"');
+    res.setHeader('Content-Length', Buffer.byteLength(csvContent, 'utf8'));
+    
+    // 添加BOM以支持中文
+    res.write('\ufeff');
+    res.end(csvContent);
+    
+  } catch (error) {
+    console.error('导出员工信息失败:', error);
+    res.status(500).json({
+      status: 'error',
+      message: '导出员工信息失败'
+    });
+  }
+});
+
 // 获取员工统计信息
 router.get('/stats/summary', async (req, res) => {
   try {
@@ -326,4 +454,4 @@ router.get('/stats/summary', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

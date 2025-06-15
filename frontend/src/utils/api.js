@@ -194,7 +194,7 @@ export const hrAPI = {
   getJobPosition: (id) => api.get(`/hr/recruitment/positions/${id}`),
   
   getJobApplications: (params) => api.get('/hr/recruitment/applications', { params }),
-  updateJobApplication: (id, data) => api.put(`/hr/recruitment/applications/${id}`, data),
+  updateJobApplication: (id, data) => api.put(`/hr/recruitment/applications/${id}/status`, data),
   getJobApplication: (id) => api.get(`/hr/recruitment/applications/${id}`),
 
   // 员工管理 - 简化API

@@ -97,7 +97,7 @@
         </el-form-item>
         <el-form-item label="工号">
           <el-input
-            v-model="searchForm.employee_no"
+            v-model="searchForm.employee_number"
             placeholder="请输入工号"
             prefix-icon="Key"
             clearable
@@ -106,16 +106,14 @@
         </el-form-item>
         <el-form-item label="部门">
           <el-select
-            v-model="searchForm.department"
-            placeholder="请选择部门"
-            clearable
-            style="width: 200px"
+            v-model="searchForm.department_id"
+            v-bind="getFilterSelectProps({ style: 'width: 200px' })"
           >
             <el-option
-              v-for="dept in departments"
-              :key="dept"
-              :label="dept"
-              :value="dept"
+              v-for="option in createFilterOptions(departments.map(d => ({label: d.name, value: d.id})))"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
             />
           </el-select>
         </el-form-item>
@@ -130,14 +128,15 @@
         </el-form-item>
         <el-form-item label="在职状态">
           <el-select
-            v-model="searchForm.work_status"
-            placeholder="请选择状态"
-            clearable
-            style="width: 150px"
+            v-model="searchForm.status"
+            v-bind="getFilterSelectProps()"
           >
-            <el-option label="在职" value="在职" />
-            <el-option label="离职" value="离职" />
-            <el-option label="休假" value="休假" />
+            <el-option
+              v-for="option in createFilterOptions(commonFilterOptions.employeeStatus)"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -155,9 +154,6 @@
     <el-card class="table-card" shadow="hover">
       <div class="table-header">
         <span class="table-title">员工列表</span>
-        <div class="table-actions">
-          <el-button size="small" @click="refreshData" icon="Refresh">刷新</el-button>
-        </div>
       </div>
       <el-table
         :data="employeeList"
@@ -169,26 +165,25 @@
         row-key="id"
       >
         <el-table-column type="index" label="序号" width="60" align="center" />
-        <el-table-column prop="employee_no" label="工号" width="120" />
+        <el-table-column prop="employee_number" label="工号" width="120" />
         <el-table-column prop="name" label="姓名" width="100" />
         <el-table-column prop="gender" label="性别" width="80" align="center" />
-        <el-table-column prop="department" label="部门" width="120" />
+        <el-table-column prop="department_name" label="部门" width="120" />
         <el-table-column prop="position" label="职位" width="120" />
-        <el-table-column prop="title" label="职称" width="120" />
         <el-table-column prop="education" label="学历" width="80" align="center" />
         <el-table-column prop="phone" label="手机号" width="130" />
         <el-table-column prop="hire_date" label="入职日期" width="120" />
-        <el-table-column prop="work_status" label="在职状态" width="100" align="center">
+        <el-table-column prop="status" label="在职状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag
-              :type="row.work_status === '在职' ? 'success' : 
-                     row.work_status === '离职' ? 'danger' : 'warning'"
+              :type="row.status === 'active' ? 'success' : 
+                     row.status === 'inactive' ? 'danger' : 'warning'"
             >
-              {{ row.work_status }}
+              {{ row.status === 'active' ? '在职' : row.status === 'inactive' ? '离职' : '其他' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-button
               type="primary"
@@ -248,7 +243,7 @@
                 <el-col :span="8">
                   <div class="detail-item">
                     <label>工号：</label>
-                    <span>{{ currentEmployee.employee_no }}</span>
+                    <span>{{ currentEmployee.employee_number }}</span>
                   </div>
                 </el-col>
                 <el-col :span="8">
@@ -371,8 +366,8 @@
       >
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="工号" prop="employee_no">
-              <el-input v-model="employeeForm.employee_no" />
+            <el-form-item label="工号" prop="employee_number">
+              <el-input v-model="employeeForm.employee_number" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -419,17 +414,16 @@
 
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="部门" prop="department">
+            <el-form-item label="部门" prop="department_id">
               <el-select
-                v-model="employeeForm.department"
-                placeholder="请选择部门"
-                style="width: 100%"
+                v-model="employeeForm.department_id"
+                v-bind="getFilterSelectProps({ style: 'width: 100%' })"
               >
                 <el-option
-                  v-for="dept in departments"
-                  :key="dept"
-                  :label="dept"
-                  :value="dept"
+                  v-for="option in createFilterOptions(departments.map(d => ({label: d.name, value: d.id})))"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
                 />
               </el-select>
             </el-form-item>
@@ -446,16 +440,14 @@
             <el-form-item label="学历" prop="education">
               <el-select
                 v-model="employeeForm.education"
-                placeholder="请选择学历"
-                style="width: 100%"
+                v-bind="getFilterSelectProps({ style: 'width: 100%' })"
               >
-                <el-option label="博士" value="博士" />
-                <el-option label="硕士" value="硕士" />
-                <el-option label="本科" value="本科" />
-                <el-option label="专科" value="专科" />
-                <el-option label="高中" value="高中" />
-                <el-option label="中专" value="中专" />
-                <el-option label="其他" value="其他" />
+                <el-option
+                  v-for="option in createFilterOptions(commonFilterOptions.education)"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -495,12 +487,18 @@
 <script>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { hrAPI } from '../../../utils/api.js'
 import { 
   User, UserFilled, Plus, Search, Refresh, 
   Edit, Delete, View, Download, Key, Briefcase, OfficeBuilding
 } from '@element-plus/icons-vue'
-
+import { systemAPI,hrAPI } from '@/utils/api'
+import { 
+  getFilterSelectProps, 
+  createFilterOptions, 
+  commonFilterOptions,
+  createValidationRules,
+  formDataUtils
+} from '@/utils/formUtils'
 export default {
   name: 'EmployeeManagement',
   components: {
@@ -528,10 +526,10 @@ export default {
     // 搜索表单
     const searchForm = reactive({
       name: '',
-      employee_no: '',
-      department: '',
+      employee_number: '',
+      department_id: '',
       position: '',
-      work_status: ''
+      status: ''
     })
 
     // 分页
@@ -543,33 +541,61 @@ export default {
 
     // 员工表单
     const employeeForm = reactive({
-      employee_no: '',
+      employee_number: '',
       name: '',
       gender: '',
       birth_date: '',
       id_card: '',
       phone: '',
-      department: '',
+      email: '',
+      department_id: '',
       position: '',
-      title: '',
       education: '',
-      employee_type: '正式员工',
+      marital_status: '',
       hire_date: '',
-      work_status: '在职',
-      address: ''
+      status: 'active',
+      salary: '',
+      address: '',
+      emergency_contact_name: '',
+      emergency_contact_phone: '',
+      notes: ''
     })
 
     // 表单验证规则
     const formRules = {
-      employee_no: [{ required: true, message: '请输入工号', trigger: 'blur' }],
-      name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-      gender: [{ required: true, message: '请选择性别', trigger: 'change' }],
+      employee_number: [
+        { required: true, message: '请输入工号', trigger: 'blur' },
+        { max: 20, message: '工号长度不能超过20个字符', trigger: 'blur' }
+      ],
+      name: [
+        { required: true, message: '请输入姓名', trigger: 'blur' },
+        { max: 50, message: '姓名长度不能超过50个字符', trigger: 'blur' }
+      ],
       phone: [
-        { required: true, message: '请输入手机号', trigger: 'blur' },
         { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
       ],
-      department: [{ required: true, message: '请选择部门', trigger: 'change' }],
-      position: [{ required: true, message: '请输入职位', trigger: 'blur' }]
+      email: [
+        { type: 'email', message: '邮箱格式不正确', trigger: 'blur' },
+        { max: 100, message: '邮箱长度不能超过100个字符', trigger: 'blur' }
+      ],
+      id_card: [
+        { max: 18, message: '身份证号长度不能超过18个字符', trigger: 'blur' }
+      ],
+      position: [
+        { max: 50, message: '职位长度不能超过50个字符', trigger: 'blur' }
+      ],
+      education: [
+        { max: 20, message: '学历长度不能超过20个字符', trigger: 'blur' }
+      ],
+      salary: [
+        { type: 'number', min: 0, message: '薪资不能为负数', trigger: 'blur' }
+      ],
+      emergency_contact_name: [
+        { max: 50, message: '紧急联系人姓名长度不能超过50个字符', trigger: 'blur' }
+      ],
+      emergency_contact_phone: [
+        { pattern: /^1[3-9]\d{9}$/, message: '紧急联系人手机号格式不正确', trigger: 'blur' }
+      ]
     }
 
     // 获取员工列表
@@ -589,17 +615,22 @@ export default {
 
         const response = await hrAPI.employees.getList(params)
         if (response.status === 'success') {
-          employeeList.value = response.data.employees
-          pagination.total = response.data.total
+          employeeList.value = response.data.items || response.data.employees || []
+          pagination.total = response.data.total || 0
+          pagination.page = response.data.page || pagination.page
+          pagination.limit = response.data.limit || pagination.limit
           
-          // 提取部门列表
-          const deptSet = new Set()
-          if (employeeList.value) {
-            employeeList.value.forEach(emp => {
-              if (emp.department) deptSet.add(emp.department)
-            })
-          }
-          departments.value = Array.from(deptSet)
+ 
+          // if (employeeList.value) {
+          //   employeeList.value.forEach(emp => {
+          //     if (emp.department) deptSet.add(emp.department)
+          //   })
+          // }
+          // departments.value = Array.from(deptSet)
+
+       
+
+          // 不再从员工数据中提取部门，直接使用API加载的部门数据
         }
       } catch (error) {
         console.error('加载员工列表失败:', error)
@@ -612,9 +643,9 @@ export default {
     // 加载部门列表
     const loadDepartments = async () => {
       try {
-        const response = await hrAPI.getDepartments()
+        const response = await systemAPI.getAllDepartments()
         if (response.status === 'success') {
-          departments.value = response.data || []
+          departments.value = response.data.items || response.data || []
         }
       } catch (error) {
         console.error('加载部门列表失败:', error)
@@ -711,13 +742,39 @@ export default {
         await employeeFormRef.value.validate()
         saving.value = true
         
+        // 准备提交数据，创建时过滤掉 id 字段
+        const submitData = { ...employeeForm }
+        if (!isEdit.value) {
+          delete submitData.id
+        }
+        
+        // 处理数字字段，确保为数字类型或null
+        const numberFields = ['department_id', 'salary']
+        numberFields.forEach(field => {
+          if (submitData[field] === '' || submitData[field] === undefined) {
+            submitData[field] = null
+          } else if (submitData[field] !== null) {
+            submitData[field] = Number(submitData[field])
+          }
+        })
+        
+        // 确保工号不为空
+        if (!submitData.employee_number || submitData.employee_number.trim() === '') {
+          ElMessage.error('工号不能为空')
+          return
+        }
+        
         let response
         if (isEdit.value) {
-          response = await hrAPI.employees.update(currentEmployee.value.id, employeeForm)
-          ElMessage.success('员工信息更新成功')
+          response = await hrAPI.employees.update(currentEmployee.value.id, submitData)
+          if (response.status === 'success') {
+            ElMessage.success('员工信息更新成功')
+          }
         } else {
-          response = await hrAPI.employees.create(employeeForm)
-          ElMessage.success('员工添加成功')
+          response = await hrAPI.employees.create(submitData)
+          if (response.status === 'success') {
+            ElMessage.success('员工添加成功')
+          }
         }
         
         if (response.status === 'success') {
@@ -727,7 +784,7 @@ export default {
         }
       } catch (error) {
         console.error('保存员工失败:', error)
-        ElMessage.error('保存失败，请重试')
+        ElMessage.error(error.response?.data?.message || '保存失败，请重试')
       } finally {
         saving.value = false
       }
@@ -764,11 +821,27 @@ export default {
     const exportEmployees = async () => {
       try {
         ElMessage.info('正在导出员工信息...')
-        const response = await hrAPI.employees.export(searchForm)
-        if (response.status === 'success') {
-          ElMessage.success('导出成功')
-          // 这里可以添加下载文件的逻辑
-        }
+        
+        // 构建导出URL
+        const params = new URLSearchParams()
+        Object.keys(searchForm).forEach(key => {
+          if (searchForm[key]) {
+            params.append(key, searchForm[key])
+          }
+        })
+        
+        const exportUrl = `/api/hr/employees/export?${params.toString()}`
+        
+        // 创建下载链接
+        const link = document.createElement('a')
+        link.href = `http://localhost:3001${exportUrl}`
+        link.download = `员工信息_${new Date().toISOString().split('T')[0]}.csv`
+        link.target = '_blank'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        ElMessage.success('导出成功')
       } catch (error) {
         console.error('导出失败:', error)
         ElMessage.error('导出失败，请重试')
@@ -818,7 +891,12 @@ export default {
       resetForm,
       saveEmployee,
       deleteEmployee,
-      exportEmployees
+      exportEmployees,
+      
+      // 工具函数
+      getFilterSelectProps,
+      createFilterOptions,
+      commonFilterOptions
     }
   }
 }

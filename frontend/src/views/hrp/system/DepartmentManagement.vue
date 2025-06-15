@@ -18,10 +18,6 @@
           <el-icon><Plus /></el-icon>
           新增部门
         </el-button>
-        <el-button @click="loadDepartments">
-          <el-icon><Refresh /></el-icon>
-          刷新
-        </el-button>
       </div>
     </div>
 
@@ -47,9 +43,6 @@
                 <OfficeBuilding />
               </el-icon>
               <span class="node-label">{{ data.name }}</span>
-              <span class="node-info">
-                ({{ data.employee_count || 0 }}人)
-              </span>
             </div>
             <div class="node-actions">
               <el-button
@@ -280,11 +273,17 @@ const saveDepartment = async () => {
     await departmentFormRef.value.validate()
     saving.value = true
     
+    // 准备提交数据，创建时过滤掉 id 字段
+    const submitData = { ...departmentForm }
+    if (!isEdit.value) {
+      delete submitData.id
+    }
     let response
     if (isEdit.value) {
-      response = await systemAPI.updateDepartment(departmentForm.id, departmentForm)
+      console.log('updateDepartment', departmentForm.id, submitData)
+      response = await systemAPI.updateDepartment(departmentForm.id, submitData)
     } else {
-      response = await systemAPI.createDepartment(departmentForm)
+      response = await systemAPI.createDepartment(submitData)
     }
     
     if (response.status === 'success') {
@@ -325,10 +324,16 @@ const deleteDepartment = (dept) => {
       if (response.status === 'success') {
         ElMessage.success('删除成功')
         loadDepartments()
+      } else {
+        ElMessage.error(response.message || '删除失败')
       }
     } catch (error) {
       console.error('删除部门失败:', error)
-      ElMessage.error('删除失败，请重试')
+      if (error.response?.data?.message?.includes('FOREIGN KEY constraint failed')) {
+        ElMessage.error('无法删除该部门，可能存在关联数据。请先处理相关员工或数据。')
+      } else {
+        ElMessage.error('删除失败，请重试')
+      }
     }
   }).catch(() => {
     // 用户取消删除
@@ -443,6 +448,21 @@ onMounted(() => {
   transition: opacity 0.3s;
 }
 
+.node-actions button {
+  padding: 4px 8px;
+  background: #f5f7fa;
+  color: #606266;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.node-actions button:hover {
+  background: #409EFF;
+  color: white;
+  border-color: #409EFF;
+}
+
 .tree-node:hover .node-actions {
   opacity: 1;
 }
@@ -470,4 +490,4 @@ onMounted(() => {
     opacity: 1;
   }
 }
-</style> 
+</style>

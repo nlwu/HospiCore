@@ -93,6 +93,18 @@ const routes = [
         component: () => import('../views/hrp/system/DepartmentManagement.vue'),
         meta: { title: '部门管理', icon: 'OfficeBuilding', parent: '系统管理' }
       },
+      {
+        path: '/profile',
+        name: 'Profile',
+        component: () => import('../views/Profile.vue'),
+        meta: { title: '个人中心', icon: 'User' }
+      },
+      {
+        path: '/settings',
+        name: 'Settings',
+        component: () => import('../views/system/Settings.vue'),
+        meta: { title: '系统设置', icon: 'Setting' }
+      },
       // 工作流中心路由
       {
         path: '/workflow/todo',

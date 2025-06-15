@@ -280,10 +280,16 @@ const fetchUsers = async () => {
     }
     
     const response = await userAPI.getUsers(params)
-    userList.value = response.data.list
-    pagination.total = response.data.total
+    if (response.status === 'success') {
+      userList.value = response.data.list || response.data.items || []
+      pagination.total = response.data.total || 0
+    } else {
+      userList.value = response.data?.list || response.data?.items || []
+      pagination.total = response.data?.total || 0
+    }
   } catch (error) {
     console.error('获取用户列表失败:', error)
+    ElMessage.error('获取用户列表失败')
   } finally {
     loading.value = false
   }
@@ -293,7 +299,11 @@ const fetchUsers = async () => {
 const fetchRoles = async () => {
   try {
     const response = await roleAPI.getAllRoles()
-    roleOptions.value = response.data
+    if (response.status === 'success') {
+      roleOptions.value = response.data || []
+    } else {
+      roleOptions.value = response.data || []
+    }
   } catch (error) {
     console.error('获取角色列表失败:', error)
   }
@@ -303,7 +313,11 @@ const fetchRoles = async () => {
 const fetchDepartments = async () => {
   try {
     const response = await systemAPI.getAllDepartments()
-    departmentOptions.value = response.data
+    if (response.status === 'success') {
+      departmentOptions.value = response.data || []
+    } else {
+      departmentOptions.value = response.data || []
+    }
   } catch (error) {
     console.error('获取部门列表失败:', error)
   }
@@ -393,26 +407,32 @@ const handleSubmit = async () => {
     
     if (isEdit.value) {
       // 编辑用户
-      await userAPI.updateUser(userForm.id, {
+      const updateData = {
         email: userForm.email,
         phone: userForm.phone,
         real_name: userForm.real_name,
         role_id: userForm.role_id,
         department_id: userForm.department_id,
         status: userForm.status
-      })
-      ElMessage.success('用户更新成功')
+      }
+      const response = await userAPI.updateUser(userForm.id, updateData)
+      if (response.status === 'success') {
+        ElMessage.success('用户更新成功')
+      }
     } else {
-      // 新增用户
+      // 新增用户 - 过滤掉 id 字段
       const { id, ...userData } = userForm
-      await userAPI.createUser(userData)
-      ElMessage.success('用户创建成功')
+      const response = await userAPI.createUser(userData)
+      if (response.status === 'success') {
+        ElMessage.success('用户创建成功')
+      }
     }
     
     dialogVisible.value = false
     fetchUsers()
   } catch (error) {
     console.error('提交失败:', error)
+    ElMessage.error('提交失败，请重试')
   } finally {
     submitLoading.value = false
   }
@@ -432,10 +452,15 @@ const handleResetPassword = async (row) => {
     }
   }).then(async ({ value }) => {
     try {
-      await userAPI.resetPassword(row.id, { newPassword: value })
-      ElMessage.success('密码重置成功')
+      const response = await userAPI.resetPassword(row.id, { newPassword: value })
+      if (response.status === 'success') {
+        ElMessage.success('密码重置成功')
+      } else {
+        ElMessage.error(response.message || '重置密码失败')
+      }
     } catch (error) {
       console.error('重置密码失败:', error)
+      ElMessage.error('重置密码失败')
     }
   })
 }
@@ -448,11 +473,20 @@ const handleDelete = (row) => {
     type: 'warning'
   }).then(async () => {
     try {
-      await userAPI.deleteUser(row.id)
-      ElMessage.success('用户删除成功')
-      fetchUsers()
+      const response = await userAPI.deleteUser(row.id)
+      if (response.status === 'success') {
+        ElMessage.success('用户删除成功')
+        // 如果当前页没有数据了，回到上一页
+        if (userList.value.length === 1 && pagination.page > 1) {
+          pagination.page--
+        }
+        fetchUsers()
+      } else {
+        ElMessage.error(response.message || '删除失败')
+      }
     } catch (error) {
       console.error('删除用户失败:', error)
+      ElMessage.error('删除用户失败')
     }
   })
 }

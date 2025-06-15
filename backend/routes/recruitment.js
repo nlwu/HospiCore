@@ -9,12 +9,20 @@ const jobPositionSchema = Joi.object({
   department_id: Joi.number().integer().optional(),
   description: Joi.string().optional(),
   requirements: Joi.string().optional(),
-  salary_min: Joi.number().precision(2).optional(),
-  salary_max: Joi.number().precision(2).optional(),
+  salary_min: Joi.number().precision(2).min(0).optional(),
+  salary_max: Joi.number().precision(2).min(0).optional(),
   positions_count: Joi.number().integer().min(1).default(1),
   status: Joi.string().valid('open', 'closed', 'paused').default('open'),
   publish_date: Joi.date().optional(),
   deadline: Joi.date().optional()
+}).custom((value, helpers) => {
+  // 验证薪资范围
+  if (value.salary_min && value.salary_max && value.salary_min > value.salary_max) {
+    return helpers.error('custom.salaryRange');
+  }
+  return value;
+}).messages({
+  'custom.salaryRange': '最低薪资不能大于最高薪资'
 });
 
 // 应聘者验证规则
@@ -23,7 +31,9 @@ const applicationSchema = Joi.object({
   name: Joi.string().max(50).required(),
   gender: Joi.string().valid('男', '女').optional(),
   birth_date: Joi.date().optional(),
-  phone: Joi.string().max(20).optional(),
+  phone: Joi.string().pattern(/^1[3-9]\d{9}$/).optional().messages({
+    'string.pattern.base': '手机号格式不正确'
+  }),
   email: Joi.string().email().max(100).optional(),
   education: Joi.string().max(20).optional(),
   work_experience: Joi.string().optional(),

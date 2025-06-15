@@ -136,15 +136,21 @@ router.post('/departments', checkPermission('department:create'), async (req, re
 // 更新部门
 router.put('/departments/:id', checkPermission('department:update'), async (req, res) => {
   try {
+    //{id: 2, name: "信息科", parent_id: 1, manager_id: "", description: "信息技术部门", sort_order: 1}
+
     const schema = Joi.object({
-      name: Joi.string().max(50),
+      id: Joi.number().integer().required(),
+      name: Joi.string().max(50).required(),
       description: Joi.string().allow(''),
-      parent_id: Joi.number().integer(),
+      parent_id: Joi.number().integer().required(),
+      manager_id: Joi.number().integer(),
       sort_order: Joi.number().integer(),
       status: Joi.number().integer().valid(0, 1)
     });
 
     const { error, value } = schema.validate(req.body);
+    console.log('updateDepartment', error, value)
+    
     if (error) {
       return res.status(400).json({
         status: 'error',

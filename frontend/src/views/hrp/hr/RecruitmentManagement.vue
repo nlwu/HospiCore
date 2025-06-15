@@ -78,27 +78,28 @@
               />
             </el-form-item>
             <el-form-item label="部门">
-              <el-select
-                v-model="positionSearchForm.department_id"
-                placeholder="请选择部门"
-                clearable
-                @change="loadPositions"
-              >
-                <el-option
-                  v-for="dept in departments"
-                  :key="dept.id"
-                  :label="dept.name"
-                  :value="dept.id"
-                />
-              </el-select>
+                              <el-select
+                  v-model="positionSearchForm.department_id"
+                  v-bind="getFilterSelectProps({ style: 'width: 150px' })"
+                  @change="loadPositions"
+                >
+                  <el-option
+                    v-for="option in createFilterOptions(departments.map(d => ({label: d.name, value: d.id})))"
+                    :key="option.value"
+                    :label="option.label"
+                    :value="option.value"
+                  />
+                </el-select>
             </el-form-item>
             <el-form-item label="状态">
               <el-select
                 v-model="positionSearchForm.status"
+                style="width: 100px"
                 placeholder="请选择状态"
                 clearable
                 @change="loadPositions"
               >
+                <el-option label="请选择" value="" />
                 <el-option label="招聘中" value="open" />
                 <el-option label="已暂停" value="paused" />
                 <el-option label="已关闭" value="closed" />
@@ -174,6 +175,7 @@
             <el-form-item label="应聘职位">
               <el-select
                 v-model="applicationSearchForm.position_id"
+                 style="width: 100px"
                 placeholder="请选择职位"
                 clearable
                 @change="loadApplications"
@@ -189,6 +191,7 @@
             </el-form-item>
             <el-form-item label="状态">
               <el-select
+               style="width: 100px"
                 v-model="applicationSearchForm.status"
                 placeholder="请选择状态"
                 clearable
@@ -401,32 +404,132 @@
     </el-dialog>
 
     <!-- 简历详情对话框 -->
-    <el-dialog v-model="applicationDetailVisible" title="简历详情" width="800px">
-      <div v-if="currentApplication">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="姓名">{{ currentApplication.name }}</el-descriptions-item>
-          <el-descriptions-item label="性别">{{ currentApplication.gender }}</el-descriptions-item>
-          <el-descriptions-item label="年龄">{{ calculateAge(currentApplication.birth_date) }}</el-descriptions-item>
-          <el-descriptions-item label="联系电话">{{ currentApplication.phone }}</el-descriptions-item>
-          <el-descriptions-item label="邮箱">{{ currentApplication.email }}</el-descriptions-item>
-          <el-descriptions-item label="学历">{{ currentApplication.education }}</el-descriptions-item>
-          <el-descriptions-item label="应聘职位">{{ currentApplication.position_title }}</el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag :type="getApplicationStatusType(currentApplication.status)">
-              {{ getApplicationStatusText(currentApplication.status) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="工作经验" :span="2">
-            {{ currentApplication.work_experience || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="面试时间" v-if="currentApplication.interview_date">
-            {{ currentApplication.interview_date }}
-          </el-descriptions-item>
-          <el-descriptions-item label="面试备注" :span="2" v-if="currentApplication.interview_notes">
-            {{ currentApplication.interview_notes }}
-          </el-descriptions-item>
-        </el-descriptions>
+    <el-dialog v-model="applicationDetailVisible" title="简历详情" width="900px" :close-on-click-modal="false">
+      <div v-if="currentApplication" class="application-detail">
+        <!-- 基本信息 -->
+        <div class="detail-section">
+          <h3 class="section-title">
+            <el-icon><User /></el-icon>
+            基本信息
+          </h3>
+          <el-descriptions :column="3" border>
+            <el-descriptions-item label="姓名">
+              <span class="detail-value">{{ currentApplication.name }}</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="性别">
+              <el-tag :type="currentApplication.gender === '男' ? 'primary' : 'success'" size="small">
+                {{ currentApplication.gender }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="年龄">
+              {{ calculateAge(currentApplication.birth_date) }}岁
+            </el-descriptions-item>
+            <el-descriptions-item label="联系电话">
+              <el-link :href="`tel:${currentApplication.phone}`" type="primary">
+                {{ currentApplication.phone }}
+              </el-link>
+            </el-descriptions-item>
+            <el-descriptions-item label="邮箱">
+              <el-link :href="`mailto:${currentApplication.email}`" type="primary">
+                {{ currentApplication.email }}
+              </el-link>
+            </el-descriptions-item>
+            <el-descriptions-item label="学历">
+              <el-tag type="info" size="small">{{ currentApplication.education }}</el-tag>
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
+
+        <!-- 应聘信息 -->
+        <div class="detail-section">
+          <h3 class="section-title">
+            <el-icon><Briefcase /></el-icon>
+            应聘信息
+          </h3>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="应聘职位">
+              <span class="detail-value">{{ currentApplication.position_title }}</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="当前状态">
+              <el-tag :type="getApplicationStatusType(currentApplication.status)">
+                {{ getApplicationStatusText(currentApplication.status) }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="申请时间">
+              {{ currentApplication.created_at }}
+            </el-descriptions-item>
+            <el-descriptions-item label="期望薪资">
+              {{ currentApplication.expected_salary ? `${currentApplication.expected_salary}元` : '-' }}
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
+
+        <!-- 个人简介 -->
+        <div class="detail-section" v-if="currentApplication.work_experience">
+          <h3 class="section-title">
+            <el-icon><Document /></el-icon>
+            工作经验
+          </h3>
+          <div class="detail-content">
+            {{ currentApplication.work_experience }}
+          </div>
+        </div>
+
+        <!-- 面试信息 -->
+        <div class="detail-section" v-if="currentApplication.interview_date || currentApplication.interview_notes">
+          <h3 class="section-title">
+            <el-icon><Clock /></el-icon>
+            面试信息
+          </h3>
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="面试时间" v-if="currentApplication.interview_date">
+              <el-tag type="warning">{{ currentApplication.interview_date }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="面试备注" v-if="currentApplication.interview_notes">
+              <div class="detail-content">{{ currentApplication.interview_notes }}</div>
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="detail-actions" v-if="currentApplication.status !== 'hired' && currentApplication.status !== 'rejected'">
+          <el-button
+            v-if="currentApplication.status === 'pending'"
+            type="success"
+            @click="updateApplicationStatus(currentApplication, 'scheduled')"
+          >
+            <el-icon><Select /></el-icon>
+            安排面试
+          </el-button>
+          <el-button
+            v-if="currentApplication.status === 'scheduled'"
+            type="warning"
+            @click="updateApplicationStatus(currentApplication, 'interviewed')"
+          >
+            <el-icon><Clock /></el-icon>
+            标记已面试
+          </el-button>
+          <el-button
+            v-if="['scheduled', 'interviewed'].includes(currentApplication.status)"
+            type="primary"
+            @click="updateApplicationStatus(currentApplication, 'hired')"
+          >
+            <el-icon><Check /></el-icon>
+            录用
+          </el-button>
+          <el-button
+            type="danger"
+            @click="updateApplicationStatus(currentApplication, 'rejected')"
+          >
+            <el-icon><Close /></el-icon>
+            拒绝
+          </el-button>
+        </div>
       </div>
+      
+      <template #footer>
+        <el-button @click="applicationDetailVisible = false">关闭</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -435,14 +538,21 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
-  Plus, Download, Briefcase, User, Clock, Select, Search, Refresh 
+  Plus, Download, Briefcase, User, Clock, Select, Search, Refresh, Document, Check, Close
 } from '@element-plus/icons-vue'
-import { hrAPI } from '../../../utils/api.js'
+import { hrAPI,systemAPI } from '@/utils/api.js'
+import { 
+  getFilterSelectProps, 
+  createFilterOptions, 
+  commonFilterOptions,
+  createValidationRules,
+  formDataUtils
+} from '@/utils/formUtils'
 
 export default {
   name: 'RecruitmentManagement',
   components: {
-    Plus, Download, Briefcase, User, Clock, Select, Search, Refresh
+    Plus, Download, Briefcase, User, Clock, Select, Search, Refresh, Document, Check, Close
   },
   setup() {
     // 响应式数据
@@ -492,9 +602,30 @@ export default {
       deadline: ''
     })
     const positionRules = {
-      title: [{ required: true, message: '请输入职位名称', trigger: 'blur' }],
-      department_id: [{ required: true, message: '请选择部门', trigger: 'change' }],
-      positions_count: [{ required: true, message: '请输入招聘人数', trigger: 'blur' }]
+      title: [
+        { required: true, message: '请输入职位名称', trigger: 'blur' },
+        { max: 100, message: '职位名称长度不能超过100个字符', trigger: 'blur' }
+      ],
+      positions_count: [
+        { required: true, message: '请输入招聘人数', trigger: 'blur' },
+        { type: 'number', min: 1, message: '招聘人数必须大于0', trigger: 'blur' }
+      ],
+      salary_min: [
+        { type: 'number', min: 0, message: '最低薪资不能为负数', trigger: 'blur' }
+      ],
+      salary_max: [
+        { type: 'number', min: 0, message: '最高薪资不能为负数', trigger: 'blur' },
+        {
+          validator: (rule, value, callback) => {
+            if (value && positionForm.salary_min && value < positionForm.salary_min) {
+              callback(new Error('最高薪资不能小于最低薪资'))
+            } else {
+              callback()
+            }
+          },
+          trigger: 'blur'
+        }
+      ]
     }
     
     // 简历详情
@@ -516,9 +647,9 @@ export default {
     // 加载部门列表
     const loadDepartments = async () => {
       try {
-        const response = await hrAPI.getDepartments()
+        const response = await systemAPI.getAllDepartments()
         if (response.status === 'success') {
-          departments.value = response.data.items || []
+          departments.value = response.data.items || response.data || []
         }
       } catch (error) {
         console.error('加载部门列表失败:', error)
@@ -635,6 +766,11 @@ export default {
         }
         if (formData.deadline) {
           formData.deadline = new Date(formData.deadline).toISOString().split('T')[0]
+        }
+        
+        // 创建时过滤掉 id 字段
+        if (!isEditPosition.value) {
+          delete formData.id
         }
         
         let response
@@ -756,7 +892,7 @@ export default {
         
         await ElMessageBox.confirm(confirmMessage, '确认操作')
         
-        const response = await hrAPI.updateJobApplicationStatus(row.id, {
+        const response = await hrAPI.updateJobApplication(row.id, {
           status,
           interview_date: interviewDate,
           interview_notes: notes
@@ -766,6 +902,14 @@ export default {
           ElMessage.success(response.message)
           loadApplications()
           loadStats()
+          
+          // 如果当前有打开的详情对话框，更新数据并关闭
+          if (applicationDetailVisible.value && currentApplication.value?.id === row.id) {
+            currentApplication.value.status = status
+            if (status === 'hired' || status === 'rejected') {
+              applicationDetailVisible.value = false
+            }
+          }
         }
       } catch (error) {
         if (error !== 'cancel') {
@@ -930,6 +1074,51 @@ export default {
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* 简历详情对话框样式 */
+.application-detail {
+  .detail-section {
+    margin-bottom: 24px;
+  }
+  
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 16px 0;
+    color: #303133;
+    font-size: 16px;
+    font-weight: 600;
+    border-bottom: 2px solid #409EFF;
+    padding-bottom: 8px;
+  }
+  
+  .detail-value {
+    font-weight: 600;
+    color: #303133;
+  }
+  
+  .detail-content {
+    background: #f5f7fa;
+    padding: 12px;
+    border-radius: 6px;
+    line-height: 1.6;
+    color: #606266;
+  }
+  
+  .detail-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    padding: 20px 0 0 0;
+    border-top: 1px solid #ebeef5;
+    margin-top: 20px;
+  }
+  
+  .detail-actions .el-button {
+    min-width: 100px;
+  }
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
